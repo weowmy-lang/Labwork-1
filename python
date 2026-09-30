@@ -1,0 +1,337 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+
+class GazonApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ГАЗОН — Пародия на Маркетплейс")
+        self.root.geometry("950x700")
+        self.root.configure(bg="#F2F4F7")
+
+        self.cart = {}
+
+        self.all_products = [
+            {"id": 1, "name": "Семена элитного мятлика «Premium Green»", "price": 1499, "desc": "Соседи лопнут от зависти. Зеленеет даже под снегом."},
+            {"id": 2, "name": "Газонокосилка бензиновая «Шумахер-2000»", "price": 24990, "desc": "Будит весь дачный поселок строго в 6 часов утра."},
+            {"id": 3, "name": "Удобрение «Рост, зараза!» (5 кг)", "price": 890, "desc": "Секретная формула. Трава пробивает даже асфальт."},
+            {"id": 4, "name": "Пластиковый розовый фламинго", "price": 1200, "desc": "Главный элемент ландшафтного дизайна любой уважающей себя дачи."},
+            {"id": 5, "name": "Пугало «Анатолий» в старой кепке", "price": 3500, "desc": "Отпугивает птиц, воров и незваных родственников."},
+            {"id": 6, "name": "Шланг садовый бесконечный (50м)", "price": 2100, "desc": "Сам запутывается в узлы, пока вы на него не смотрите."}
+        ]
+
+        self.current_products = self.all_products.copy()
+        self.cart_win = None
+        self.create_widgets()
+
+    # ──────────────────────────────────────────────
+    #  ОСНОВНОЙ ИНТЕРФЕЙС
+    # ──────────────────────────────────────────────
+
+    def create_widgets(self):
+        header = tk.Frame(self.root, bg="#005BFF", height=90)
+        header.pack(fill=tk.X)
+        header.pack_propagate(False)
+
+        logo_label = tk.Label(header, text="ГАЗОН", font=("Courier New", 26, "bold"), fg="#FF0055", bg="#005BFF")
+        logo_label.pack(side=tk.LEFT, padx=(20, 5), pady=15)
+
+        slogan_label = tk.Label(header, text="Трава у дома\nдешевле!", font=("Arial", 10, "italic"), fg="white", bg="#005BFF", justify=tk.LEFT)
+        slogan_label.pack(side=tk.LEFT, padx=(0, 20), pady=20)
+
+        search_frame = tk.Frame(header, bg="#005BFF")
+        search_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=20, pady=25)
+
+        search_lbl = tk.Label(search_frame, text="Поиск:", font=("Arial", 11, "bold"), fg="white", bg="#005BFF")
+        search_lbl.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.search_entry = tk.Entry(search_frame, font=("Arial", 12), bd=0, highlightthickness=2, highlightbackground="white", highlightcolor="#FF0055")
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+        self.search_entry.bind("<KeyRelease>", self.on_search_change)
+
+        self.cart_btn = tk.Button(header, text="\U0001F6D2 Корзина: 0 \u20bd", font=("Arial", 12, "bold"),
+                                  bg="#FF0055", fg="white", bd=0, padx=15, pady=5, cursor="hand2", command=self.show_cart_window)
+        self.cart_btn.pack(side=tk.RIGHT, padx=20, pady=25)
+
+        self.main_frame = tk.Frame(self.root, bg="#F2F4F7")
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.canvas = tk.Canvas(self.main_frame, bg="#F2F4F7", highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self.main_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas, bg="#F2F4F7")
+
+        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.scrollable_frame.columnconfigure(0, weight=1, minsize=440)
+        self.scrollable_frame.columnconfigure(1, weight=1, minsize=440)
+
+        self.render_products()
+
+    def render_products(self):
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+
+        if not self.current_products:
+            no_results = tk.Label(self.scrollable_frame, text="Ничего не найдено! Попробуйте изменить запрос.",
+                                  font=("Arial", 14, "italic"), bg="#F2F4F7", fg="#7A869A")
+            no_results.pack(pady=50, padx=50)
+            return
+
+        for i, prod in enumerate(self.current_products):
+            self.draw_product_card(prod, i)
+
+    def draw_product_card(self, prod, index):
+        card = tk.Frame(self.scrollable_frame, bg="white", bd=1, relief=tk.RIDGE, padx=15, pady=15)
+        card.grid(row=index // 2, column=index % 2, padx=15, pady=15, sticky="nsew")
+
+        badge = tk.Label(card, text="ХИТ ДАЧИ", font=("Arial", 9, "bold"), fg="white", bg="#00F0A0", padx=5)
+        badge.pack(anchor=tk.NW, pady=(0, 5))
+
+        title = tk.Label(card, text=prod["name"], font=("Arial", 13, "bold"), fg="#1F242C", bg="white", wraplength=400, justify=tk.LEFT)
+        title.pack(anchor=tk.W, pady=2)
+
+        desc = tk.Label(card, text=prod["desc"], font=("Arial", 10), fg="#7A869A", bg="white", wraplength=400, justify=tk.LEFT)
+        desc.pack(anchor=tk.W, pady=5)
+
+        price = tk.Label(card, text=f"{prod['price']:,} \u20bd".replace(',', ' '), font=("Arial", 15, "bold"), fg="#FF0055", bg="white")
+        price.pack(anchor=tk.W, pady=5)
+
+        add_btn = tk.Button(card, text="В корзину", font=("Arial", 11, "bold"), bg="#005BFF", fg="white",
+                            bd=0, cursor="hand2", activebackground="#0046CC", activeforeground="white",
+                            command=lambda p=prod: self.add_to_cart(p))
+        add_btn.pack(fill=tk.X, pady=(10, 0))
+
+    def on_search_change(self, event):
+        query = self.search_entry.get().lower().strip()
+        if not query:
+            self.current_products = self.all_products.copy()
+        else:
+            self.current_products = [p for p in self.all_products if query in p["name"].lower() or query in p["desc"].lower()]
+        self.render_products()
+
+    # ──────────────────────────────────────────────
+    #  РАБОТА С КОРЗИНОЙ
+    # ──────────────────────────────────────────────
+
+    def add_to_cart(self, prod):
+        p_id = prod["id"]
+        if p_id in self.cart:
+            self.cart[p_id]["count"] += 1
+        else:
+            self.cart[p_id] = {"id": p_id, "name": prod["name"], "price": prod["price"], "count": 1}
+        self.update_cart_button()
+        if self.cart_win and self.cart_win.winfo_exists():
+            self.refresh_cart_items()
+
+    def change_qty(self, p_id, delta):
+        if p_id not in self.cart:
+            return
+        new_count = self.cart[p_id]["count"] + delta
+        if new_count <= 0:
+            del self.cart[p_id]
+        else:
+            self.cart[p_id]["count"] = new_count
+        self.update_cart_button()
+        self.refresh_cart_items()
+
+    def remove_from_cart(self, p_id):
+        if p_id in self.cart:
+            del self.cart[p_id]
+        self.update_cart_button()
+        self.refresh_cart_items()
+
+    def clear_cart(self):
+        self.cart.clear()
+        self.update_cart_button()
+        self.refresh_cart_items()
+
+    def update_cart_button(self):
+        total_price = sum(item["price"] * item["count"] for item in self.cart.values())
+        count = sum(item["count"] for item in self.cart.values())
+        self.cart_btn.config(text=f"\U0001F6D2 Корзина: {count} шт / {total_price:,} \u20bd".replace(',', ' '))
+
+    # ──────────────────────────────────────────────
+    #  ОКНО КОРЗИНЫ (новый дизайн)
+    # ──────────────────────────────────────────────
+
+    def show_cart_window(self):
+        if self.cart_win and self.cart_win.winfo_exists():
+            self.cart_win.lift()
+            self.refresh_cart_items()
+            return
+
+        self.cart_win = tk.Toplevel(self.root)
+        self.cart_win.title("Корзина — ГАЗОН")
+        self.cart_win.geometry("640x680")
+        self.cart_win.configure(bg="white")
+        self.cart_win.grab_set()
+        self.cart_win.resizable(False, False)
+
+        # Шапка окна корзины
+        cart_header = tk.Frame(self.cart_win, bg="#005BFF", height=55)
+        cart_header.pack(fill=tk.X)
+        cart_header.pack_propagate(False)
+
+        tk.Label(cart_header, text="\U0001F6D2 Моя корзина", font=("Arial", 14, "bold"), fg="white", bg="#005BFF").pack(side=tk.LEFT, padx=20)
+
+        clear_btn = tk.Button(cart_header, text="Очистить", font=("Arial", 10), fg="white", bg="#005BFF",
+                              bd=0, cursor="hand2", activebackground="#0046CC", activeforeground="white",
+                              command=self.clear_cart)
+        clear_btn.pack(side=tk.RIGHT, padx=20)
+
+        # Скроллируемая область товаров
+        self.cart_scroll_frame = tk.Frame(self.cart_win, bg="white")
+        self.cart_scroll_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.cart_canvas = tk.Canvas(self.cart_scroll_frame, bg="white", highlightthickness=0)
+        cart_scrollbar = ttk.Scrollbar(self.cart_scroll_frame, orient="vertical", command=self.cart_canvas.yview)
+        self.cart_items_frame = tk.Frame(self.cart_canvas, bg="white")
+
+        self.cart_items_frame.bind("<Configure>", lambda e: self.cart_canvas.configure(scrollregion=self.cart_canvas.bbox("all")))
+        self.cart_canvas.create_window((0, 0), window=self.cart_items_frame, anchor="nw")
+        self.cart_canvas.configure(yscrollcommand=cart_scrollbar.set)
+
+        self.cart_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=10)
+        cart_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Нижняя панель: итог + форма + кнопка
+        self.cart_bottom = tk.Frame(self.cart_win, bg="#F2F4F7")
+        self.cart_bottom.pack(fill=tk.X, side=tk.BOTTOM)
+
+        self.refresh_cart_items()
+
+    def refresh_cart_items(self):
+        if not (self.cart_win and self.cart_win.winfo_exists()):
+            return
+
+        for w in self.cart_items_frame.winfo_children():
+            w.destroy()
+
+        for w in self.cart_bottom.winfo_children():
+            w.destroy()
+
+        if not self.cart:
+            empty = tk.Label(self.cart_items_frame, text="Корзина пуста.\nКозы съели всю рассаду!",
+                             font=("Arial", 13, "italic"), bg="white", fg="#7A869A")
+            empty.pack(pady=60)
+            self._build_bottom_panel(total=0)
+            return
+
+        total = 0
+        for idx, (item_id, item) in enumerate(sorted(self.cart.items())):
+            row = tk.Frame(self.cart_items_frame, bg="white" if idx % 2 == 0 else "#F8F9FB")
+            row.pack(fill=tk.X, padx=5, pady=2)
+
+            # мини-картинка-эмодзи
+            tk.Label(row, text="\U0001F33F", font=("Arial", 22), bg=row["bg"]).pack(side=tk.LEFT, padx=10, pady=8)
+
+            # название + цена за шт
+            info = tk.Frame(row, bg=row["bg"])
+            info.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+            tk.Label(info, text=item["name"], font=("Arial", 11, "bold"), fg="#1F242C", bg=row["bg"],
+                     wraplength=260, justify=tk.LEFT, anchor="w").pack(anchor="w")
+            tk.Label(info, text=f"{item['price']:,} \u20bd / шт".replace(',', ' '), font=("Arial", 9), fg="#7A869A", bg=row["bg"], anchor="w").pack(anchor="w")
+
+            # контрол количества:  −  N  +
+            qty_frame = tk.Frame(row, bg=row["bg"])
+            qty_frame.pack(side=tk.LEFT, padx=5)
+
+            minus_btn = tk.Button(qty_frame, text="\u2212", font=("Arial", 12, "bold"), width=2,
+                                 bg="#E8EDF3", fg="#1F242C", bd=0, cursor="hand2",
+                                 command=lambda pid=item_id: self.change_qty(pid, -1))
+            minus_btn.pack(side=tk.LEFT, padx=2)
+
+            qty_lbl = tk.Label(qty_frame, text=str(item["count"]), font=("Arial", 12, "bold"), fg="#1F242C", bg=row["bg"], width=3)
+            qty_lbl.pack(side=tk.LEFT)
+
+            plus_btn = tk.Button(qty_frame, text="+", font=("Arial", 12, "bold"), width=2,
+                                 bg="#E8EDF3", fg="#1F242C", bd=0, cursor="hand2",
+                                 command=lambda pid=item_id: self.change_qty(pid, 1))
+            plus_btn.pack(side=tk.LEFT, padx=2)
+
+            # сумма по строке
+            line_total = item["price"] * item["count"]
+            total += line_total
+            tk.Label(row, text=f"{line_total:,} \u20bd".replace(',', ' '), font=("Arial", 12, "bold"), fg="#FF0055", bg=row["bg"]).pack(side=tk.LEFT, padx=10)
+
+            # удалить
+            del_btn = tk.Button(row, text="\u2715", font=("Arial", 9, "bold"), fg="white", bg="#FF0055",
+                                bd=0, cursor="hand2", padx=6, activebackground="#CC0044", activeforeground="white",
+                                command=lambda pid=item_id: self.remove_from_cart(pid))
+            del_btn.pack(side=tk.LEFT, padx=(5, 10))
+
+        self._build_bottom_panel(total)
+
+    def _build_bottom_panel(self, total):
+        """Строит нижнюю панель корзины: форма доставки + итог + кнопка заказа."""
+        # Разделитель
+        tk.Frame(self.cart_bottom, bg="#DDE3EC", height=2).pack(fill=tk.X)
+
+        # Форма доставки
+        form = tk.Frame(self.cart_bottom, bg="#F2F4F7", padx=20, pady=12)
+        form.pack(fill=tk.X)
+
+        tk.Label(form, text="Доставка курьером на тракторе", font=("Arial", 11, "bold"), bg="#F2F4F7", fg="#1F242C").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
+
+        tk.Label(form, text="Телефон:", font=("Arial", 10), bg="#F2F4F7").grid(row=1, column=0, sticky="w", pady=3)
+        self.phone_entry = tk.Entry(form, font=("Arial", 11), width=25)
+        self.phone_entry.grid(row=1, column=1, sticky="w", pady=3, padx=(10, 0))
+
+        tk.Label(form, text="Адрес:", font=("Arial", 10), bg="#F2F4F7").grid(row=2, column=0, sticky="w", pady=3)
+        self.address_entry = tk.Entry(form, font=("Arial", 11), width=35)
+        self.address_entry.grid(row=2, column=1, sticky="w", pady=3, padx=(10, 0))
+
+        # Итог + кнопка
+        total_bar = tk.Frame(self.cart_bottom, bg="white", padx=20, pady=12)
+        total_bar.pack(fill=tk.X)
+
+        tk.Label(total_bar, text="Итого:", font=("Arial", 14, "bold"), bg="white", fg="#1F242C").pack(side=tk.LEFT)
+        self.total_label = tk.Label(total_bar, text=f"{total:,} \u20bd".replace(',', ' '), font=("Arial", 16, "bold"), fg="#FF0055", bg="white")
+        self.total_label.pack(side=tk.LEFT, padx=(8, 0))
+
+        checkout_btn = tk.Button(total_bar, text="Оформить заказ", font=("Arial", 13, "bold"), bg="#005BFF", fg="white",
+                                bd=0, cursor="hand2", padx=25, pady=8, activebackground="#0046CC", activeforeground="white",
+                                command=self.checkout)
+        checkout_btn.pack(side=tk.RIGHT)
+
+    def checkout(self):
+        if not self.cart:
+            messagebox.showwarning("Пусто", "Корзина пуста — добавьте хотя бы один товар.")
+            return
+
+        phone = self.phone_entry.get().strip() if hasattr(self, "phone_entry") else ""
+        address = self.address_entry.get().strip() if hasattr(self, "address_entry") else ""
+
+        if not phone:
+            messagebox.showwarning("Нет телефона", "Укажите телефон для доставки.")
+            return
+        if not address:
+            messagebox.showwarning("Нет адреса", "Куда трактору ехать? Укажите адрес.")
+            return
+
+        total = sum(item["price"] * item["count"] for item in self.cart.values())
+        count = sum(item["count"] for item in self.cart.values())
+
+        messagebox.showinfo(
+            "Заказ оформлен!",
+            f"Спасибо за заказ в ГАЗОН!\n\n"
+            f"Товаров: {count} шт.\n"
+            f"Сумма: {total:,} \u20bd\n\n".replace(',', ' ') +
+            f"Трактор выехал по адресу:\n{address}\n\n"
+            f"Связь по телефону: {phone}\n\n"
+            f"Ориентировочное время доставки: когда рассвет."
+        )
+
+        self.clear_cart()
+        self.cart_win.destroy()
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = GazonApp(root)
+    root.mainloop()
